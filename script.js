@@ -1,64 +1,76 @@
-export default async function handler(req, res) {
-    // Permitir conexión con tu frontend
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+document.addEventListener('DOMContentLoaded', () => {
+    const videoUrlInput = document.getElementById('videoUrl');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const resultContainer = document.getElementById('resultContainer');
+    const finalDownloadBtn = document.getElementById('finalDownloadBtn');
+    const timerText = document.getElementById('timer');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (!downloadBtn || !videoUrlInput) return;
 
-    const { url } = req.query;
+    function startCountdown(seconds) {
+        return new Promise((resolve) => {
+            let timeLeft = seconds;
+            const countdownSpan = document.getElementById('countdown');
+            if (countdownSpan) countdownSpan.textContent = timeLeft;
 
-    if (!url) {
-        return res.status(400).json({ error: 'Por favor, ingresa un enlace válido.' });
-    }
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (countdownSpan) countdownSpan.textContent = timeLeft;
 
-    try {
-        const cleanUrl = url.trim();
-
-        // 1. Petición POST a TikWM (Servidor a Servidor con headers de navegador)
-        const params = new URLSearchParams();
-        params.append('url', cleanUrl);
-        params.append('hd', '1');
-
-        const tikwmResponse = await fetch('https://www.tikwm.com/api/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            body: params
-        });
-
-        if (tikwmResponse.ok) {
-            const data = await tikwmResponse.json();
-            if (data && data.code === 0 && data.data) {
-                const videoUrl = data.data.hdplay || data.data.play;
-                if (videoUrl) {
-                    const finalUrl = videoUrl.startsWith('http') ? videoUrl : `https://www.tikwm.com${videoUrl}`;
-                    return res.status(200).json({ success: true, videoUrl: finalUrl });
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    resolve();
                 }
-            }
-        }
-
-        // 2. Respaldo secundario: Tiklydown
-        const tiklyRes = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(cleanUrl)}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
+            }, 1000);
         });
+    }
 
-        if (tiklyRes.ok) {
-            const data = await tiklyRes.json();
-            if (data && data.video && data.video.noWatermark) {
-                return res.status(200).json({ success: true, videoUrl: data.video.noWatermark });
-            }
+    async function fetchVideoUrl(url) {
+        const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (res.ok && data.success && data.videoUrl) {
+            return data.videoUrl;
         }
 
-        return res.status(400).json({ error: 'No se pudo procesar el video. Verifica que el enlace sea público.' });
-
-    } catch (err) {
-        return res.status(500).json({ error: 'Error del servidor al conectar con TikTok.' });
+        throw new Error(data.error || "No se pudo procesar el enlace.");
     }
-}
+
+    downloadBtn.addEventListener('click', async function() {
+        const url = videoUrlInput.value.trim();
+
+        if (url === "") {
+            alert("Por favor, pega un enlace válido de TikTok.");
+            return;
+        }
+
+        downloadBtn.disabled = true;
+
+        if (resultContainer) resultContainer.classList.remove('hidden');
+        if (finalDownloadBtn) finalDownloadBtn.classList.add('hidden');
+        if (timerText) {
+            timerText.style.display = "block";
+            timerText.innerHTML = `Obteniendo video sin marca de agua... Espera <span id="countdown">5</span> segundos.`;
+        }
+
+        try {
+            const [_, videoHdUrl] = await Promise.all([
+                startCountdown(5),
+                fetchVideoUrl(url)
+            ]);
+
+            if (timerText) timerText.style.display = "none";
+            if (finalDownloadBtn) {
+                finalDownloadBtn.href = videoHdUrl;
+                finalDownloadBtn.classList.remove('hidden');
+            }
+
+        } catch (error) {
+            if (timerText) timerText.style.display = "none";
+            if (resultContainer) resultContainer.classList.add('hidden');
+            alert(error.message || "No se pudo procesar el enlace. Revisa que el video sea público.");
+        } finally {
+            downloadBtn.disabled = false;
+        }
+    });
+});
