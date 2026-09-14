@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Descargador de TikTok HD</title>
-    <!-- Vinculamos la hoja de estilos de CSS -->
+    <!-- Hoja de estilos -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,23 +15,23 @@
 
         <!-- Campo donde el usuario pega el enlace -->
         <div class="input-box">
-            <input type="text" id="videoUrl" placeholder="Pega el enlace de TikTok aquí...">
+            <input type="text" id="videoUrl" placeholder="Pega el enlace de TikTok aquí..." autocomplete="off">
             <button id="downloadBtn">Obtener Video</button>
         </div>
 
-        <!-- Espacio reservado para los anuncios que monetizan la web -->
+        <!-- Espacio reservado para los anuncios -->
         <div class="ad-banner">
             <p>[Espacio Publicitario / Anuncio Banner]</p>
         </div>
 
-        <!-- Zona del temporizador y el botón de descarga final -->
+        <!-- Zona del temporizador y botón final -->
         <div id="resultContainer" class="hidden">
-            <div id="timer">Espera <span id="countdown">5</span> segundos...</div>
-            <a id="finalDownloadBtn" class="download-link hidden" href="#" target="_blank">Descargar MP4 HD</a>
+            <div id="timer">Obteniendo video sin marca de agua... Espera <span id="countdown">5</span> segundos.</div>
+            <a id="finalDownloadBtn" class="download-link hidden" href="#" target="_blank" rel="noopener noreferrer" download="tiktok_video_hd.mp4">Descargar MP4 HD</a>
         </div>
     </div>
 
-    <!-- Vinculamos el archivo de lógica en JavaScript -->
+    <!-- Lógica JavaScript -->
     <script src="script.js"></script>
 </body>
-</html>
+</html>  
