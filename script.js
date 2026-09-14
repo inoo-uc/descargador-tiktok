@@ -1,4 +1,4 @@
-cconst videoUrlInput = document.getElementById('videoUrl');
+const videoUrlInput = document.getElementById('videoUrl');
 const downloadBtn = document.getElementById('downloadBtn');
 const resultContainer = document.getElementById('resultContainer');
 const finalDownloadBtn = document.getElementById('finalDownloadBtn');
