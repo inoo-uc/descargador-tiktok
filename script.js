@@ -12,7 +12,7 @@ downloadBtn.addEventListener('click', async function() {
         return;
     }
 
-    // Ocultar botón final y mostrar temporizador de 5 segundos
+    // Mostrar sección del temporizador
     resultContainer.classList.remove('hidden');
     finalDownloadBtn.classList.add('hidden');
     timerText.style.display = "block";
@@ -31,36 +31,34 @@ downloadBtn.addEventListener('click', async function() {
     }, 1000);
 
     try {
-        // Petición a la API de TikWM para obtener el enlace directo al archivo .mp4 HD
+        // Consultar API de TikWM para obtener el MP4 HD sin marca de agua
         const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
         const data = await response.json();
 
         if (data && data.data && data.data.play) {
-            const videoHdUrl = data.data.play; // URL directa al MP4 sin marca de agua
+            const videoUrl = data.data.play;
 
-            // Descargar el archivo directamente a la computadora/celular mediante Blob
-            const videoResponse = await fetch(videoHdUrl);
-            const videoBlob = await videoResponse.blob();
-            const blobUrl = URL.createObjectURL(videoBlob);
-
+            // Esperar los 5 segundos del anuncio antes de mostrar el botón de descarga
             setTimeout(() => {
                 timerText.style.display = "none";
                 finalDownloadBtn.classList.remove('hidden');
                 
-                // Asignar el archivo procesado localmente
-                finalDownloadBtn.href = blobUrl;
+                // Enlace directo al archivo .mp4 limpio
+                finalDownloadBtn.href = videoUrl;
+                finalDownloadBtn.setAttribute('target', '_blank');
+                finalDownloadBtn.setAttribute('rel', 'noopener noreferrer');
                 finalDownloadBtn.setAttribute('download', 'tiktok_video_hd.mp4');
             }, timeLeft * 1000);
 
         } else {
             clearInterval(interval);
             timerText.style.display = "none";
-            alert("No se pudo procesar el video. Verifica que el enlace sea correcto.");
+            alert("No se pudo obtener el video. Asegúrate de que el enlace sea de un video público de TikTok.");
         }
 
     } catch (error) {
         clearInterval(interval);
         timerText.style.display = "none";
-        alert("El navegador bloqueó la prueba local. Cuando subamos la página a su servidor gratuito (Vercel/GitHub), la descarga directa funcionará al 100%.");
+        alert("Ocurrió un error al procesar el video. Intenta nuevamente con otro enlace.");
     }
 });
