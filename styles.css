@@ -63,11 +63,16 @@ button {
     font-weight: bold;
     font-size: 1rem;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: background 0.3s, opacity 0.3s;
 }
 
 button:hover {
     background-color: #0891b2;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* Espacio reservado para anuncios */
@@ -82,15 +87,22 @@ button:hover {
 }
 
 /* Zona de resultado y botón final de descarga */
+#timer {
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
 .download-link {
     display: inline-block;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     padding: 12px 20px;
     background-color: #22c55e;
     color: #fff;
     text-decoration: none;
     border-radius: 8px;
     font-weight: bold;
+    transition: background 0.3s;
 }
 
 .download-link:hover {
@@ -99,5 +111,5 @@ button:hover {
 
 /* Clase para ocultar elementos temporalmente */
 .hidden {
-    display: none;
+    display: none !important;
 }
