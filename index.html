@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargador de TikTok HD</title>
+    <!-- Vinculamos la hoja de estilos de CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Descargador de TikTok</h1>
+        <p>Pega el enlace de tu video para descargarlo en HD y sin marca de agua.</p>
+
+        <!-- Campo donde el usuario pega el enlace -->
+        <div class="input-box">
+            <input type="text" id="videoUrl" placeholder="Pega el enlace de TikTok aquí...">
+            <button id="downloadBtn">Obtener Video</button>
+        </div>
+
+        <!-- Espacio reservado para los anuncios que monetizan la web -->
+        <div class="ad-banner">
+            <p>[Espacio Publicitario / Anuncio Banner]</p>
+        </div>
+
+        <!-- Zona del temporizador y el botón de descarga final -->
+        <div id="resultContainer" class="hidden">
+            <div id="timer">Espera <span id="countdown">5</span> segundos...</div>
+            <a id="finalDownloadBtn" class="download-link hidden" href="#" target="_blank">Descargar MP4 HD</a>
+        </div>
+    </div>
+
+    <!-- Vinculamos el archivo de lógica en JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
