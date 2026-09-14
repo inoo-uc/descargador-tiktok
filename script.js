@@ -1,118 +1,64 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const videoUrlInput = document.getElementById('videoUrl');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const resultContainer = document.getElementById('resultContainer');
-    const finalDownloadBtn = document.getElementById('finalDownloadBtn');
-    const timerText = document.getElementById('timer');
+export default async function handler(req, res) {
+    // Permitir conexión con tu frontend
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (!downloadBtn || !videoUrlInput) return;
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
-    // Función que realiza la cuenta regresiva de 5 segundos
-    function startCountdown(seconds) {
-        return new Promise((resolve) => {
-            let timeLeft = seconds;
-            const countdownSpan = document.getElementById('countdown');
-            if (countdownSpan) countdownSpan.textContent = timeLeft;
+    const { url } = req.query;
 
-            const interval = setInterval(() => {
-                timeLeft--;
-                if (countdownSpan) countdownSpan.textContent = timeLeft;
+    if (!url) {
+        return res.status(400).json({ error: 'Por favor, ingresa un enlace válido.' });
+    }
 
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    resolve();
-                }
-            }, 1000);
+    try {
+        const cleanUrl = url.trim();
+
+        // 1. Petición POST a TikWM (Servidor a Servidor con headers de navegador)
+        const params = new URLSearchParams();
+        params.append('url', cleanUrl);
+        params.append('hd', '1');
+
+        const tikwmResponse = await fetch('https://www.tikwm.com/api/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            body: params
         });
+
+        if (tikwmResponse.ok) {
+            const data = await tikwmResponse.json();
+            if (data && data.code === 0 && data.data) {
+                const videoUrl = data.data.hdplay || data.data.play;
+                if (videoUrl) {
+                    const finalUrl = videoUrl.startsWith('http') ? videoUrl : `https://www.tikwm.com${videoUrl}`;
+                    return res.status(200).json({ success: true, videoUrl: finalUrl });
+                }
+            }
+        }
+
+        // 2. Respaldo secundario: Tiklydown
+        const tiklyRes = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(cleanUrl)}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+
+        if (tiklyRes.ok) {
+            const data = await tiklyRes.json();
+            if (data && data.video && data.video.noWatermark) {
+                return res.status(200).json({ success: true, videoUrl: data.video.noWatermark });
+            }
+        }
+
+        return res.status(400).json({ error: 'No se pudo procesar el video. Verifica que el enlace sea público.' });
+
+    } catch (err) {
+        return res.status(500).json({ error: 'Error del servidor al conectar con TikTok.' });
     }
-
-    // Función para consultar las APIs con múltiples respaldos
-    async function fetchVideoUrl(url) {
-        const encodedUrl = encodeURIComponent(url);
-
-        // Intento 1: API Directa de TikWM
-        try {
-            const res = await fetch(`https://www.tikwm.com/api/?url=${encodedUrl}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.code === 0 && data.data) {
-                    return data.data.hdplay || data.data.play;
-                }
-            }
-        } catch (e) {
-            console.warn("Intento 1 falló, probando proxy...", e);
-        }
-
-        // Intento 2: TikWM a través de Proxy (Evita bloqueos CORS de navegadores)
-        try {
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.tikwm.com/api/?url=${encodedUrl}`)}`;
-            const res = await fetch(proxyUrl);
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.code === 0 && data.data) {
-                    return data.data.hdplay || data.data.play;
-                }
-            }
-        } catch (e) {
-            console.warn("Intento 2 falló, probando API secundaria...", e);
-        }
-
-        // Intento 3: API Tiklydown
-        try {
-            const res = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodedUrl}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.video && data.video.noWatermark) {
-                    return data.video.noWatermark;
-                }
-            }
-        } catch (e) {
-            console.warn("Intento 3 falló...", e);
-        }
-
-        throw new Error("No se pudo obtener el video.");
-    }
-
-    // Evento de clic en "Obtener Video"
-    downloadBtn.addEventListener('click', async function() {
-        const url = videoUrlInput.value.trim();
-
-        if (url === "") {
-            alert("Por favor, pega un enlace válido de TikTok.");
-            return;
-        }
-
-        // Deshabilitar botón durante el proceso
-        downloadBtn.disabled = true;
-        
-        // Preparar interfaz
-        if (resultContainer) resultContainer.classList.remove('hidden');
-        if (finalDownloadBtn) finalDownloadBtn.classList.add('hidden');
-        if (timerText) {
-            timerText.style.display = "block";
-            timerText.innerHTML = `Obteniendo video sin marca de agua... Espera <span id="countdown">5</span> segundos.`;
-        }
-
-        try {
-            // Ejecutar el contador de 5s y la búsqueda del video simultáneamente
-            const [_, videoHdUrl] = await Promise.all([
-                startCountdown(5),
-                fetchVideoUrl(url)
-            ]);
-
-            // Mostrar el botón verde de descarga al finalizar
-            if (timerText) timerText.style.display = "none";
-            if (finalDownloadBtn) {
-                finalDownloadBtn.href = videoHdUrl;
-                finalDownloadBtn.classList.remove('hidden');
-            }
-
-        } catch (error) {
-            if (timerText) timerText.style.display = "none";
-            if (resultContainer) resultContainer.classList.add('hidden');
-            alert("No se pudo procesar el enlace. Verifica que sea un video público e inténtalo de nuevo.");
-        } finally {
-            downloadBtn.disabled = false;
-        }
-    });
-});
+}
