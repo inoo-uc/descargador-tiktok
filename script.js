@@ -12,7 +12,6 @@ downloadBtn.addEventListener('click', async function() {
         return;
     }
 
-    // Mostrar sección del temporizador
     resultContainer.classList.remove('hidden');
     finalDownloadBtn.classList.add('hidden');
     timerText.style.display = "block";
@@ -31,34 +30,32 @@ downloadBtn.addEventListener('click', async function() {
     }, 1000);
 
     try {
-        // Consultar API de TikWM para obtener el MP4 HD sin marca de agua
-        const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
+        // Petición a la API pública de Tiklydown con soporte CORS abierto
+        const response = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(url)}`);
         const data = await response.json();
 
-        if (data && data.data && data.data.play) {
-            const videoUrl = data.data.play;
+        if (data && data.video && data.video.noWatermark) {
+            const videoHdUrl = data.video.noWatermark;
 
-            // Esperar los 5 segundos del anuncio antes de mostrar el botón de descarga
             setTimeout(() => {
                 timerText.style.display = "none";
                 finalDownloadBtn.classList.remove('hidden');
                 
-                // Enlace directo al archivo .mp4 limpio
-                finalDownloadBtn.href = videoUrl;
+                // Enlace directo al archivo MP4
+                finalDownloadBtn.href = videoHdUrl;
                 finalDownloadBtn.setAttribute('target', '_blank');
-                finalDownloadBtn.setAttribute('rel', 'noopener noreferrer');
                 finalDownloadBtn.setAttribute('download', 'tiktok_video_hd.mp4');
             }, timeLeft * 1000);
 
         } else {
             clearInterval(interval);
             timerText.style.display = "none";
-            alert("No se pudo obtener el video. Asegúrate de que el enlace sea de un video público de TikTok.");
+            alert("No se pudo obtener el video. Verifica que el enlace sea de un video público.");
         }
 
     } catch (error) {
         clearInterval(interval);
         timerText.style.display = "none";
-        alert("Ocurrió un error al procesar el video. Intenta nuevamente con otro enlace.");
+        alert("Error de conexión. Intenta de nuevo en unos segundos.");
     }
 });
