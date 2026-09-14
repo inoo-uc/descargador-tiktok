@@ -5,11 +5,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalDownloadBtn = document.getElementById('finalDownloadBtn');
     const timerText = document.getElementById('timer');
 
-    if (!downloadBtn || !videoUrlInput) {
-        console.error("No se encontraron los botones de la interfaz.");
-        return;
+    if (!downloadBtn || !videoUrlInput) return;
+
+    // Función que realiza la cuenta regresiva de 5 segundos
+    function startCountdown(seconds) {
+        return new Promise((resolve) => {
+            let timeLeft = seconds;
+            const countdownSpan = document.getElementById('countdown');
+            if (countdownSpan) countdownSpan.textContent = timeLeft;
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (countdownSpan) countdownSpan.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 1000);
+        });
     }
 
+    // Función para consultar las APIs con múltiples respaldos
+    async function fetchVideoUrl(url) {
+        const encodedUrl = encodeURIComponent(url);
+
+        // Intento 1: API Directa de TikWM
+        try {
+            const res = await fetch(`https://www.tikwm.com/api/?url=${encodedUrl}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.code === 0 && data.data) {
+                    return data.data.hdplay || data.data.play;
+                }
+            }
+        } catch (e) {
+            console.warn("Intento 1 falló, probando proxy...", e);
+        }
+
+        // Intento 2: TikWM a través de Proxy (Evita bloqueos CORS de navegadores)
+        try {
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.tikwm.com/api/?url=${encodedUrl}`)}`;
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.code === 0 && data.data) {
+                    return data.data.hdplay || data.data.play;
+                }
+            }
+        } catch (e) {
+            console.warn("Intento 2 falló, probando API secundaria...", e);
+        }
+
+        // Intento 3: API Tiklydown
+        try {
+            const res = await fetch(`https://api.tiklydown.eu.org/api/download?url=${encodedUrl}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.video && data.video.noWatermark) {
+                    return data.video.noWatermark;
+                }
+            }
+        } catch (e) {
+            console.warn("Intento 3 falló...", e);
+        }
+
+        throw new Error("No se pudo obtener el video.");
+    }
+
+    // Evento de clic en "Obtener Video"
     downloadBtn.addEventListener('click', async function() {
         const url = videoUrlInput.value.trim();
 
@@ -18,7 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Mostrar sección del contador
+        // Deshabilitar botón durante el proceso
+        downloadBtn.disabled = true;
+        
+        // Preparar interfaz
         if (resultContainer) resultContainer.classList.remove('hidden');
         if (finalDownloadBtn) finalDownloadBtn.classList.add('hidden');
         if (timerText) {
@@ -26,46 +93,26 @@ document.addEventListener('DOMContentLoaded', () => {
             timerText.innerHTML = `Obteniendo video sin marca de agua... Espera <span id="countdown">5</span> segundos.`;
         }
 
-        let timeLeft = 5;
-        const interval = setInterval(() => {
-            timeLeft--;
-            const countdownSpan = document.getElementById('countdown');
-            if (countdownSpan) countdownSpan.textContent = timeLeft;
-
-            if (timeLeft <= 0) {
-                clearInterval(interval);
-            }
-        }, 1000);
-
         try {
-            // Petición directa a TikWM
-            const response = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
+            // Ejecutar el contador de 5s y la búsqueda del video simultáneamente
+            const [_, videoHdUrl] = await Promise.all([
+                startCountdown(5),
+                fetchVideoUrl(url)
+            ]);
 
-            if (data && data.code === 0 && data.data) {
-                const videoHdUrl = data.data.play; // URL directa al MP4 sin marca de agua
-
-                setTimeout(() => {
-                    if (timerText) timerText.style.display = "none";
-                    if (finalDownloadBtn) {
-                        finalDownloadBtn.classList.remove('hidden');
-                        finalDownloadBtn.href = videoHdUrl;
-                        finalDownloadBtn.setAttribute('target', '_blank');
-                        finalDownloadBtn.setAttribute('rel', 'noopener noreferrer');
-                        finalDownloadBtn.setAttribute('download', 'tiktok_video_hd.mp4');
-                    }
-                }, timeLeft * 1000);
-
-            } else {
-                clearInterval(interval);
-                if (timerText) timerText.style.display = "none";
-                alert("No se pudo obtener el video. Asegúrate de que el enlace sea de un video público.");
+            // Mostrar el botón verde de descarga al finalizar
+            if (timerText) timerText.style.display = "none";
+            if (finalDownloadBtn) {
+                finalDownloadBtn.href = videoHdUrl;
+                finalDownloadBtn.classList.remove('hidden');
             }
 
         } catch (error) {
-            clearInterval(interval);
             if (timerText) timerText.style.display = "none";
-            alert("Error al procesar el enlace. Revisa tu conexión a internet e inténtalo de nuevo.");
+            if (resultContainer) resultContainer.classList.add('hidden');
+            alert("No se pudo procesar el enlace. Verifica que sea un video público e inténtalo de nuevo.");
+        } finally {
+            downloadBtn.disabled = false;
         }
     });
 });
